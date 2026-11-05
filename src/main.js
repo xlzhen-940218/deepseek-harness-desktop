@@ -63,8 +63,33 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'about:blank') {
+      // 登录流程先打开空白页签，再用 location.replace 跳到授权地址；
+      // 这里放行空白页签，交由下面的 did-create-window 转到系统浏览器。
+      return { action: 'allow', overrideBrowserWindowOptions: { show: false } }
+    }
     void shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('did-create-window', child => {
+    let detached = false
+    const detach = url => {
+      if (detached || !/^https?:\/\//i.test(url)) return false
+      detached = true
+      void shell.openExternal(url)
+      if (!child.isDestroyed()) child.destroy()
+      return true
+    }
+    const contents = child.webContents
+    for (const eventName of ['will-navigate', 'will-redirect']) {
+      contents.on(eventName, (event, url) => {
+        if (detach(url)) event.preventDefault()
+      })
+    }
+    contents.on('did-start-navigation', (event, url, isInPlace, isMainFrame) => {
+      if (isMainFrame) detach(url)
+    })
   })
 
   mainWindow.webContents.on('will-navigate', (event, url) => {

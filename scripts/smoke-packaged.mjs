@@ -149,7 +149,7 @@ try {
     throw new Error(`Packaged plugin market returned HTTP ${marketResponse.status}`)
   }
   const marketStatus = await marketResponse.json()
-  if (marketStatus.version !== '1.40.0') {
+  if (marketStatus.version !== '1.73.11') {
     throw new Error(`Packaged plugin market has unexpected version ${String(marketStatus.version)}`)
   }
   if (marketStatus.restart !== false) {

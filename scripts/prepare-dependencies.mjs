@@ -22,7 +22,7 @@ const settingsGeneralClientPath = path.join(
 const dshManifestPath = path.join(root, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
 const windowsNodePath = path.join(root, 'assets', 'dsh-node.exe')
 const nodeLicensePath = path.join(root, 'third-party-licenses', 'nodejs-LICENSE')
-const DSH_MARKET_VERSION = '1.40.0'
+const DSH_MARKET_VERSION = '1.73.11'
 
 const ORIGINAL_WINDOWS_OPENER = `async function openWindowsPath(path, signal, run) {
 \tawait run("powershell.exe", [
@@ -44,11 +44,9 @@ const PATCHED_WINDOWS_OPENER = `async function openWindowsPath(path, signal, run
 \t], signal);
 }`
 
-const SETTINGS_NAV_ICON_START = `\t\tfunction navIcon(id) {
-\t\t\tif (id === "models")`
+const SETTINGS_NAV_ICON_START = `\t\t\tif (id === "models")`
 
-const MARKET_NAV_ICON = `\t\tfunction navIcon(id) {
-\t\t\tif (id === "market") return (0, react_jsx_runtime.jsxs)("svg", {
+const MARKET_NAV_ICON = `\t\t\tif (id === "market") return (0, react_jsx_runtime.jsxs)("svg", {
 \t\t\t\tclassName: SettingsRoot_module_css_default.navIcon,
 \t\t\t\twidth: 16,
 \t\t\t\theight: 16,
@@ -180,6 +178,48 @@ export function findNodeLicense(executablePath = process.execPath) {
   return candidates.find(existsSync)
 }
 
+const APP_BOOT_ROOT_INCLUDE_OLD = `\t\tconst entry = bootstrapIncludes.get(ctx);
+\t\tif (entry === void 0) throw new Error(\`\${binName}: profile reload requires the root Include entry\`);`
+
+const APP_BOOT_ROOT_INCLUDE_NEW = `\t\tlet entry = bootstrapIncludes.get(ctx);
+\t\tif (entry === void 0) {
+\t\t\tfor (const row of ctx.loader?.entries?.() ?? []) {
+\t\t\t\tif (row.options?.id === "include" && row.options?.name === "cordis:include") {
+\t\t\t\t\tentry = row;
+\t\t\t\t\tbreak;
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t\tif (entry === void 0) throw new Error(\`\${binName}: profile reload requires the root Include entry\`);`
+
+export function appBootPaths(base = root) {
+  return [
+    path.join(base, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'index.js'),
+    path.join(
+      base,
+      'node_modules',
+      '@deepseek-ai',
+      'dsh',
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-app-boot',
+      'lib',
+      'index.js',
+    ),
+  ]
+}
+
+/**
+ * dsh 0.2.1 在 CLI 启动的上下文里取不到 profile 根 Include 条目，
+ * 导致保存需要重载的配置时报 "profile reload requires the root Include entry"。
+ * 这里补一个按 id 查找的回退。
+ */
+export function prepareAppBootRootInclude(target) {
+  const source = readFileSync(target, 'utf8')
+  if (!source.includes(APP_BOOT_ROOT_INCLUDE_OLD)) return
+  writeFileSync(target, source.replace(APP_BOOT_ROOT_INCLUDE_OLD, APP_BOOT_ROOT_INCLUDE_NEW))
+}
+
 export function prepareWindowsNode({
   platform = process.platform,
   executablePath = process.execPath,
@@ -203,8 +243,11 @@ function isMainModule() {
 }
 
 if (isMainModule()) {
-  prepareApiProxy()
-  prepareSettingsMarketNavIcon()
+  if (existsSync(apiProxyPath)) prepareApiProxy()
+  if (existsSync(settingsGeneralClientPath)) prepareSettingsMarketNavIcon()
+  for (const appBootPath of appBootPaths()) {
+    if (existsSync(appBootPath)) prepareAppBootRootInclude(appBootPath)
+  }
   prepareDshManifest()
   prepareWindowsNode()
 }

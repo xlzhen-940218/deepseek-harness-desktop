@@ -23,6 +23,13 @@ test('extractReadyUrl reads the canonical loopback readiness URL', () => {
   )
 })
 
+test('extractReadyUrl keeps the web auth token when dsh prints one', () => {
+  assert.equal(
+    extractReadyUrl('dsh web: http://127.0.0.1:60882/?token=abc_DEF-123\n'),
+    'http://127.0.0.1:60882/?token=abc_DEF-123',
+  )
+})
+
 test('extractReadyUrl ignores non-loopback output', () => {
   assert.equal(extractReadyUrl('dsh web: http://192.168.1.10:3080'), undefined)
 })

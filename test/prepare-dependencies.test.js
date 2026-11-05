@@ -69,7 +69,7 @@ test('DSH dependency fallback includes the bundled plugin market', () => {
   const patched = patchDshManifest(source)
   assert.deepEqual(JSON.parse(patched).dependencies, {
     commander: '^15.0.0',
-    dshmarket: '1.40.0',
+    dshmarket: '1.73.11',
   })
   assert.equal(patchDshManifest(patched), patched)
 })

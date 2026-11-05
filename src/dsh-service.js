@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)\b/m
+const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+(?:\/?\?[^\s]*)?)/m
 
 export function resolveDshEntry() {
   return unpackedPath(fileURLToPath(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js')))
